@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Matrix" />
+  <title>Matrix</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #hud {
+      position: fixed;
+      bottom: env(safe-area-inset-bottom, 20px);
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      padding-bottom: 20px;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #hud.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .btn {
+      background: rgba(0, 255, 65, 0.08);
+      border: 1px solid rgba(0, 255, 65, 0.4);
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      border-radius: 2px;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn:active {
+      background: rgba(0, 255, 65, 0.2);
+      border-color: #00ff41;
+    }
+
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.85);
+      z-index: 20;
+      gap: 12px;
+      transition: opacity 0.6s ease;
+    }
+
+    #splash.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #splash h1 {
+      font-family: 'Courier New', monospace;
+      color: #00ff41;
+      font-size: clamp(28px, 8vw, 52px);
+      letter-spacing: 10px;
+      text-shadow: 0 0 20px #00ff41, 0 0 40px #00aa30;
+      animation: flicker 4s infinite;
+    }
+
+    #splash p {
+      font-family: 'Courier New', monospace;
+      color: rgba(0,255,65,0.5);
+      font-size: 12px;
+      letter-spacing: 3px;
+    }
+
+    #splash .start-btn {
+      margin-top: 30px;
+      background: transparent;
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      letter-spacing: 4px;
+      padding: 14px 40px;
+      cursor: pointer;
+      text-transform: uppercase;
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 4px #00ff41; }
+      50% { box-shadow: 0 0 16px #00ff41, 0 0 32px #00aa30; }
+    }
+
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96% { opacity: 0.4; }
+      97% { opacity: 1; }
+      98% { opacity: 0.6; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="splash">
+  <h1>MATRIX</h1>
+  <p>ENTER THE SIMULATION</p>
+  <button class="start-btn" id="startBtn">JACK IN</button>
+</div>
+
+<div id="hud" id="hud">
+  <button class="btn" id="colorBtn">COLOR</button>
+  <button class="btn" id="speedBtn">SPEED</button>
+  <button class="btn" id="densityBtn">DENSITY</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const hud = document.getElementById('hud');
+
+  // Config
+  const COLORS = ['#00ff41', '#00ccff', '#ff0080', '#ffffff'];
+  const SPEEDS = [1, 1.8, 3];
+  const DENSITIES = [18, 12, 8]; // font sizes (smaller = denser)
+  const SPEED_LABELS = ['SLOW', 'NORMAL', 'FAST'];
+  const DENSITY_LABELS = ['NORMAL', 'DENSE', 'STORM'];
+
+  let colorIdx = 0, speedIdx = 1, densityIdx = 0;
+
+  // Matrix characters: katakana + latin + digits
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ@#$%&*';
+
+  let cols, drops, fontSize;
+  let animId;
+  let lastTime = 0;
+  let frameInterval = 1000 / 20;
+
+  function setup() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    fontSize = DENSITIES[densityIdx];
+    cols = Math.floor(canvas.width / fontSize);
+    drops = Array(cols).fill(1).map(() => Math.random() * -canvas.height / fontSize);
+  }
+
+  function getColor() { return COLORS[colorIdx]; }
+
+  function draw(ts) {
+    const elapsed = ts - lastTime;
+    if (elapsed < frameInterval / SPEEDS[speedIdx]) {
+      animId = requestAnimationFrame(draw);
+      return;
+    }
+    lastTime = ts;
+
+    // Fade trail
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const baseColor = getColor();
+
+    for (let i = 0; i < drops.length; i++) {
+      const ch = chars[Math.floor(Math.random() * chars.length)];
+      const x = i * fontSize;
+      const y = drops[i] * fontSize;
+
+      // Head glyph: bright white/light
+      if (drops[i] > 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = baseColor;
+        ctx.shadowBlur = 12;
+        ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+        ctx.fillText(ch, x, y);
+      }
+
+      // Body: main color
+      ctx.fillStyle = baseColor;
+      ctx.shadowColor = baseColor;
+      ctx.shadowBlur = 6;
+      ctx.font = `${fontSize}px 'Courier New', monospace`;
+      const bodyChar = chars[Math.floor(Math.random() * chars.length)];
+      if (y - fontSize > 0) ctx.fillText(bodyChar, x, y - fontSize);
+
+      // Reset
+      if (y > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i] += 0.5;
+    }
+
+    ctx.shadowBlur = 0;
+    animId = requestAnimationFrame(draw);
+  }
+
+  function start() {
+    setup();
+    if (animId) cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(draw);
+  }
+
+  // HUD toggle on tap
+  let hudTimer;
+  document.addEventListener('touchstart', () => {
+    hud.classList.add('visible');
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(() => hud.classList.remove('visible'), 3000);
+  });
+  document.addEventListener('click', () => {
+    hud.classList.add('visible');
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(() => hud.classList.remove('visible'), 3000);
+  });
+
+  // Button controls
+  document.getElementById('colorBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    colorIdx = (colorIdx + 1) % COLORS.length;
+    const names = ['GREEN', 'CYAN', 'PINK', 'WHITE'];
+    document.getElementById('colorBtn').textContent = names[colorIdx];
+    resetTimer();
+  });
+
+  document.getElementById('speedBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    speedIdx = (speedIdx + 1) % SPEEDS.length;
+    document.getElementById('speedBtn').textContent = SPEED_LABELS[speedIdx];
+    resetTimer();
+  });
+
+  document.getElementById('densityBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    densityIdx = (densityIdx + 1) % DENSITIES.length;
+    document.getElementById('densityBtn').textContent = DENSITY_LABELS[densityIdx];
+    start(); // rebuild columns
+    resetTimer();
+  });
+
+  function resetTimer() {
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(() => hud.classList.remove('visible'), 3000);
+  }
+
+  // Splash
+  document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('splash').classList.add('hidden');
+    start();
+  });
+
+  // Resize
+  window.addEventListener('resize', start);
+
+  // Prevent scroll/bounce
+  document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>
