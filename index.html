@@ -64,6 +64,28 @@
       border-color: #00ff41;
     }
 
+    .red-pill-btn {
+      background: rgba(255, 0, 0, 0.08);
+      border: 1px solid rgba(255, 0, 0, 0.4);
+      color: #ff0000;
+    }
+
+    .red-pill-btn:active {
+      background: rgba(255, 0, 0, 0.2);
+      border-color: #ff0000;
+    }
+
+    .blue-pill-btn {
+      background: rgba(0, 0, 255, 0.08);
+      border: 1px solid rgba(0, 0, 255, 0.4);
+      color: #0000ff;
+    }
+
+    .blue-pill-btn:active {
+      background: rgba(0, 0, 255, 0.2);
+      border-color: #0000ff;
+    }
+
     #splash {
       position: fixed;
       inset: 0;
@@ -112,6 +134,52 @@
       animation: pulse-border 2s infinite;
     }
 
+    #video-container {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.95);
+      z-index: 15;
+      padding: 20px;
+    }
+
+    #video-container.visible {
+      display: flex;
+    }
+
+    #video-container iframe {
+      width: 90%;
+      max-width: 800px;
+      height: 80%;
+      max-height: 600px;
+      border: 2px solid rgba(0, 255, 65, 0.4);
+      border-radius: 2px;
+    }
+
+    #close-video-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 255, 65, 0.08);
+      border: 1px solid rgba(0, 255, 65, 0.4);
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      cursor: pointer;
+      z-index: 16;
+    }
+
+    #close-video-btn:active {
+      background: rgba(0, 255, 65, 0.2);
+      border-color: #00ff41;
+    }
+
     @keyframes pulse-border {
       0%, 100% { box-shadow: 0 0 4px #00ff41; }
       50% { box-shadow: 0 0 16px #00ff41, 0 0 32px #00aa30; }
@@ -135,10 +203,17 @@
   <button class="start-btn" id="startBtn">Press Here Mr Powell</button>
 </div>
 
-<div id="hud" id="hud">
+<div id="video-container">
+  <button id="close-video-btn">CLOSE</button>
+  <iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ?si=ofZqoNa8uPDK59MS" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
+
+<div id="hud">
   <button class="btn" id="colorBtn">COLOR</button>
   <button class="btn" id="speedBtn">SPEED</button>
   <button class="btn" id="densityBtn">DENSITY</button>
+  <button class="btn red-pill-btn" id="redPillBtn">RED PILL</button>
+  <button class="btn blue-pill-btn" id="bluePillBtn">BLUE PILL</button>
 </div>
 
 <script>
@@ -287,6 +362,24 @@
     densityIdx = (densityIdx + 1) % DENSITIES.length;
     document.getElementById('densityBtn').textContent = DENSITY_LABELS[densityIdx];
     start(); // rebuild columns
+    resetTimer();
+  });
+
+  document.getElementById('redPillBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('video-container').classList.add('visible');
+  });
+
+  document.getElementById('bluePillBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.open('https://www.dailymail.co.uk/home/index.html', '_blank');
+    resetTimer();
+  });
+
+  document.getElementById('close-video-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('video-container').classList.remove('visible');
+    hud.classList.add('visible');
     resetTimer();
   });
 
